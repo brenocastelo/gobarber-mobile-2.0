@@ -1,15 +1,19 @@
 import React, { useCallback, useRef } from 'react';
 import {
+  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  TextInput,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Icon from 'react-native-vector-icons/Feather';
 import { Form } from '@unform/mobile';
 import { FormHandles } from '@unform/core';
 import * as Yup from 'yup';
+
+import api from '../../services/api';
 
 import logo from '../../assets/logo.png';
 import Button from '../../components/Button';
@@ -36,26 +40,44 @@ const SignUp: React.FC = () => {
   const emailInputRef = useRef<TextInput>(null);
   const passwordInputRef = useRef<TextInput>(null);
 
-  const handleSubmit = useCallback(async (data: SignUpFormData) => {
-    try {
-      formRef.current?.setErrors({});
+  const handleSubmit = useCallback(
+    async (data: SignUpFormData) => {
+      try {
+        formRef.current?.setErrors({});
 
-      const schema = Yup.object().shape({
-        name: Yup.string().required('Nome é obrigatório'),
-        email: Yup.string()
-          .required('Email é obrigatório')
-          .email('Digite um email válido'),
-        password: Yup.string().required('Senha é obrigatória'),
-      });
+        const schema = Yup.object().shape({
+          name: Yup.string().required('Nome é obrigatório'),
+          email: Yup.string()
+            .required('Email é obrigatório')
+            .email('Digite um email válido'),
+          password: Yup.string().required('Senha é obrigatória'),
+        });
 
-      await schema.validate(data, { abortEarly: false });
-    } catch (error) {
-      console.log(error);
-      const errors = getValidationErrors(error);
+        await schema.validate(data, { abortEarly: false });
 
-      formRef.current?.setErrors(errors);
-    }
-  }, []);
+        await api.post('/users', data);
+
+        Alert.alert(
+          'Cadastro realizado com sucesso!',
+          'Você já pode fazer login na aplicação',
+        );
+
+        navigation.navigate('SignIn');
+      } catch (error) {
+        if (error instanceof Yup.ValidationError) {
+          const errors = getValidationErrors(error);
+
+          formRef.current?.setErrors(errors);
+        }
+
+        Alert.alert(
+          'Erro ao realizar o cadastro!',
+          'Por favor, tente novamente.',
+        );
+      }
+    },
+    [navigation],
+  );
 
   return (
     <KeyboardAvoidingView

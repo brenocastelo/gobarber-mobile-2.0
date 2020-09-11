@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import {
+  Alert,
   Image,
   KeyboardAvoidingView,
   Platform,
@@ -27,6 +28,7 @@ import {
   CreateAccountButtonText,
 } from './styles';
 import { getValidationErrors } from '../../utils/getValidationErrors';
+import { useAuth } from '../../context/AuthContext';
 
 interface SignInFormData {
   email: string;
@@ -45,24 +47,45 @@ const SignIn: React.FC = () => {
     }, 5000);
   }, []); */
 
-  const handleSubmit = useCallback(async (data: SignInFormData) => {
-    try {
-      formRef.current?.setErrors({});
+  const { signIn, user } = useAuth();
 
-      const schema = Yup.object().shape({
-        email: Yup.string()
-          .required('Email é obrigatório')
-          .email('Digite um email válido'),
-        passowrd: Yup.string().required('A senha é obrigatória'),
-      });
+  console.log(user);
 
-      await schema.validate(data, { abortEarly: false });
-    } catch (error) {
-      const errors = getValidationErrors(error);
+  const handleSubmit = useCallback(
+    async (data: SignInFormData) => {
+      console.log(data);
 
-      formRef.current?.setErrors(errors);
-    }
-  }, []);
+      try {
+        formRef.current?.setErrors({});
+
+        const schema = Yup.object().shape({
+          email: Yup.string()
+            .required('Email é obrigatório')
+            .email('Digite um email válido'),
+          password: Yup.string().required('A senha é obrigatória'),
+        });
+
+        await schema.validate(data, { abortEarly: false });
+
+        console.log('after schema validate');
+
+        await signIn({ email: data.email, password: data.password });
+      } catch (error) {
+        if (error instanceof Yup.ValidationError) {
+          const errors = getValidationErrors(error);
+
+          formRef.current?.setErrors(errors);
+          return;
+        }
+
+        Alert.alert(
+          'Falha no login!',
+          'Por favor, verifique suas credenciais e tente novamente.',
+        );
+      }
+    },
+    [signIn],
+  );
   return (
     <>
       <KeyboardAvoidingView
@@ -96,7 +119,7 @@ const SignIn: React.FC = () => {
               <Input
                 ref={passwordInputRef}
                 secureTextEntry
-                name="passowrd"
+                name="password"
                 icon="lock"
                 placeholder="Senha"
                 returnKeyType="send"
