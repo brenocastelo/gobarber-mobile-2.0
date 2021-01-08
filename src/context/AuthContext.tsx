@@ -9,10 +9,17 @@ import AsyncStorage from '@react-native-community/async-storage';
 
 import api from '../services/api';
 
+interface User {
+  name: string;
+  email: string;
+  avatar_url: string;
+  id: string;
+}
+
 // object para evitar dependências de dados da api
 interface AuthState {
   token: string;
-  user: object;
+  user: User;
 }
 
 interface SignInCredentials {
@@ -21,10 +28,11 @@ interface SignInCredentials {
 }
 
 interface AuthContextData {
-  user: object;
+  user: User;
   isLoading: boolean;
   signIn(credentials: SignInCredentials): Promise<void>;
   signOut(): void;
+  updateUser(user: User): Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextData>({} as AuthContextData);
@@ -39,6 +47,8 @@ const AuthProvider: React.FC = ({ children }) => {
       const token = await AsyncStorage.getItem('@GoBarber:token');
 
       if (user && token) {
+        api.defaults.headers.authorization = `Bearer ${token}`;
+
         setAuthData({ user: JSON.parse(user), token });
       }
 
@@ -59,6 +69,7 @@ const AuthProvider: React.FC = ({ children }) => {
         ['@GoBarber:token', token],
       ]);
 
+      api.defaults.headers.authorization = `Bearer ${token}`;
       setAuthData({ token, user });
     },
     [],
@@ -70,9 +81,21 @@ const AuthProvider: React.FC = ({ children }) => {
     setAuthData({} as AuthState);
   }, []);
 
+  const updateUser = useCallback(
+    async (user: User) => {
+      setAuthData({
+        token: authData.token,
+        user,
+      });
+
+      await AsyncStorage.setItem('@GoBarber:user', JSON.stringify(user));
+    },
+    [authData.token],
+  );
+
   return (
     <AuthContext.Provider
-      value={{ user: authData.user, isLoading, signIn, signOut }}
+      value={{ user: authData.user, isLoading, signIn, signOut, updateUser }}
     >
       {children}
     </AuthContext.Provider>
@@ -86,9 +109,9 @@ function useAuth(): AuthContextData {
     throw new Error('useAuth must be within an AuthProvider context');
   }
 
-  const { user, signIn, signOut, isLoading } = context;
+  const { user, signIn, signOut, updateUser, isLoading } = context;
 
-  return { user, signIn, signOut, isLoading };
+  return { user, signIn, signOut, updateUser, isLoading };
 }
 
 export { AuthProvider, useAuth };

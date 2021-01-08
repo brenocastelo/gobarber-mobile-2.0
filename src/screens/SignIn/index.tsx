@@ -49,12 +49,8 @@ const SignIn: React.FC = () => {
 
   const { signIn, user } = useAuth();
 
-  console.log(user);
-
   const handleSubmit = useCallback(
     async (data: SignInFormData) => {
-      console.log(data);
-
       try {
         formRef.current?.setErrors({});
 
@@ -66,8 +62,6 @@ const SignIn: React.FC = () => {
         });
 
         await schema.validate(data, { abortEarly: false });
-
-        console.log('after schema validate');
 
         await signIn({ email: data.email, password: data.password });
       } catch (error) {
